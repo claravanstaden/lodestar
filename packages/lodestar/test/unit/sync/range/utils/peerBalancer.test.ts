@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {config} from "@chainsafe/lodestar-config/default";
 import {Batch, BatchOpts} from "../../../../../src/sync/range/batch.js";
 import {ChainPeersBalancer} from "../../../../../src/sync/range/utils/peerBalancer.js";
@@ -57,8 +57,8 @@ describe("sync / range / peerBalancer", () => {
 
       const idlePeers = peerBalancer.idlePeers();
 
-      const idlePeersIds = idlePeers.map((p) => p.toB58String()).sort();
-      const expectedIds = [peer3, peer4].map((p) => p.toB58String()).sort();
+      const idlePeersIds = idlePeers.map((p) => p.toString()).sort();
+      const expectedIds = [peer3, peer4].map((p) => p.toString()).sort();
       expect(idlePeersIds).to.deep.equal(expectedIds, "Wrong idlePeers (encoded as B58String)");
     }
   });

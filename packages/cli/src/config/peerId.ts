@@ -1,4 +1,4 @@
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {writeFile, readFile} from "../util/index.js";
 
 export async function createPeerId(): Promise<PeerId> {

@@ -152,7 +152,7 @@ describe("network / peers / PeerManager", function () {
     const {chain, libp2p, networkEventBus} = await mockModules();
 
     // Simualate a peer connection, get() should return truthy
-    libp2p.connectionManager.connections.set(peerId1.toB58String(), [libp2pConnectionOutboud]);
+    libp2p.connectionManager.connections.set(peerId1.toString(), [libp2pConnectionOutboud]);
 
     // Subscribe to `peerConnected` event, which must fire after checking peer relevance
     const peerConnectedPromise = waitForEvent(networkEventBus, NetworkEvent.peerConnected, this.timeout() / 2);
@@ -181,7 +181,7 @@ describe("network / peers / PeerManager", function () {
     reqResp.metadata.resolves(remoteMetadata);
 
     // Simualate a peer connection, get() should return truthy
-    libp2p.connectionManager.connections.set(peerId1.toB58String(), [libp2pConnectionOutboud]);
+    libp2p.connectionManager.connections.set(peerId1.toString(), [libp2pConnectionOutboud]);
     ((libp2p.connectionManager as any) as EventEmitter).emit("peer:connect", libp2pConnectionOutboud);
 
     await peerConnectedPromise;
@@ -198,7 +198,7 @@ describe("network / peers / PeerManager", function () {
     expect(reqResp.status.callCount).to.equal(1, "reqResp.status must be called");
     expect(reqResp.metadata.callCount).to.equal(1, "reqResp.metadata must be called");
 
-    expect(peerManager["connectedPeers"].get(peerId1.toB58String())?.metadata).to.deep.equal(
+    expect(peerManager["connectedPeers"].get(peerId1.toString())?.metadata).to.deep.equal(
       remoteMetadata,
       "Wrong stored metadata"
     );

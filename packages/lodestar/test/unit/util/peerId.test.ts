@@ -1,14 +1,14 @@
 import {expect} from "chai";
 import {createFromPrivKey} from "peer-id";
 import {fromHexString, toHexString} from "@chainsafe/ssz";
-import {createPeerId} from "../../../src/network/index.js";
+import {createSecp256k1PeerId} from "../../../src/network/index.js";
 
 describe("PeerId util - for multithread sim test", () => {
   it("Should serialize and deserialize privKey", async () => {
-    const peerId = await createPeerId();
+    const peerId = await createSecp256k1PeerId();
     const privKey = peerId.marshalPrivKey();
     const privKeyHex = toHexString(privKey);
     const peerIdRecov = await createFromPrivKey(fromHexString(privKeyHex));
-    expect(peerId.toB58String()).to.equal(peerIdRecov.toB58String());
+    expect(peerId.toString()).to.equal(peerIdRecov.toString());
   });
 });

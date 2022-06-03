@@ -1,9 +1,7 @@
 import sinon from "sinon";
 import {expect} from "chai";
 
-import PeerId from "peer-id";
-import {Multiaddr} from "multiaddr";
-
+import {PeerId} from "@libp2p/interface-peer-id";
 import {ENR} from "@chainsafe/discv5";
 import {createIBeaconConfig} from "@chainsafe/lodestar-config";
 import {config} from "@chainsafe/lodestar-config/default";
@@ -188,7 +186,7 @@ describe("network", function () {
     netA.prepareBeaconCommitteeSubnet([subscription]);
     await connected;
 
-    expect(netA.getConnectionsByPeer().has(netB.peerId.toB58String())).to.be.equal(
+    expect(netA.getConnectionsByPeer().has(netB.peerId.toString())).to.be.equal(
       true,
       "netA has not connected to peerB"
     );
@@ -214,7 +212,7 @@ describe("network", function () {
 
     expect(onGoodbyeNetB.callCount).to.equal(1, "netB must receive 1 goodbye");
     const [goodbye, peer] = onGoodbyeNetB.getCall(0).args;
-    expect(peer.toB58String()).to.equal(netA.peerId.toB58String(), "netA must be the goodbye requester");
+    expect(peer.toString()).to.equal(netA.peerId.toString(), "netA must be the goodbye requester");
     expect(goodbye).to.equal(BigInt(GoodByeReasonCode.CLIENT_SHUTDOWN), "goodbye reason must be CLIENT_SHUTDOWN");
   });
 
@@ -238,7 +236,7 @@ describe("network", function () {
 
     expect(onGoodbyeNetB.callCount).to.equal(1, "netB must receive 1 goodbye");
     const [goodbye, peer] = onGoodbyeNetB.getCall(0).args;
-    expect(peer.toB58String()).to.equal(netA.peerId.toB58String(), "netA must be the goodbye requester");
+    expect(peer.toString()).to.equal(netA.peerId.toString(), "netA must be the goodbye requester");
     expect(goodbye).to.equal(BigInt(GoodByeReasonCode.CLIENT_SHUTDOWN), "goodbye reason must be CLIENT_SHUTDOWN");
   });
 

@@ -10,6 +10,6 @@ describe("config / peerId", () => {
     writePeerId(peerIdFilepath, peerId);
     const peerIdRead = await readPeerId(peerIdFilepath);
 
-    expect(peerIdRead.toB58String()).to.equal(peerId.toB58String());
+    expect(peerIdRead.toString()).to.equal(peerId.toString());
   });
 });

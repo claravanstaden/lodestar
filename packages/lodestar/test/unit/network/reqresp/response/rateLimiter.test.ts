@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import sinon, {SinonStubbedInstance} from "sinon";
 import {WinstonLogger} from "@chainsafe/lodestar-utils";
 import {IPeerRpcScoreStore, PeerAction, PeerRpcScoreStore} from "../../../../../src/network/index.js";

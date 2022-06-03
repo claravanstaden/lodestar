@@ -2,7 +2,7 @@
  * @module node
  */
 
-import LibP2p from "libp2p";
+import {Libp2p} from "libp2p";
 import {Registry} from "prom-client";
 import {AbortController} from "@chainsafe/abort-controller";
 
@@ -46,7 +46,7 @@ export interface IBeaconNodeInitModules {
   config: IBeaconConfig;
   db: IBeaconDb;
   logger: ILogger;
-  libp2p: LibP2p;
+  libp2p: Libp2p;
   anchorState: BeaconStateAllForks;
   wsCheckpoint?: phase0.Checkpoint;
   metricsRegistries?: Registry[];

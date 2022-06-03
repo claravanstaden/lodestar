@@ -7,7 +7,7 @@ import {toHexString} from "@chainsafe/ssz";
 import {IChainConfig} from "@chainsafe/lodestar-config";
 import {waitForEvent} from "../utils/events/resolver.js";
 import {ChainEvent} from "../../src/chain/index.js";
-import {createPeerId} from "../../src/network/index.js";
+import {createSecp256k1PeerId} from "../../src/network/index.js";
 import {logFilesDir} from "./params.js";
 import {NodeWorkerOptions} from "./threaded/types.js";
 
@@ -79,7 +79,7 @@ function runMultiNodeMultiThreadTest({nodeCount, validatorsPerNode, event, altai
 
     for (let i = 0; i < nodeCount; i++) {
       const p2pPort = 10000 + i;
-      const peerId = await createPeerId();
+      const peerId = await createSecp256k1PeerId();
       const peerIdPrivkey = toHexString(peerId.marshalPrivKey());
       p2pPorts.push(p2pPort);
       peerIdPrivkeys.push(peerIdPrivkey);

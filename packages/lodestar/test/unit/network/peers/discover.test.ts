@@ -1,12 +1,12 @@
 import {expect} from "chai";
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {getValidPeerId} from "../../../utils/peer.js";
 
 describe("network / peers / discover", () => {
   it("PeerId API", () => {
     const peerId = getValidPeerId();
-    const peerIdStr = peerId.toB58String();
+    const peerIdStr = peerId.toString();
     const peerFromHex = PeerId.createFromB58String(peerIdStr);
-    expect(peerFromHex.toB58String()).to.equal(peerIdStr);
+    expect(peerFromHex.toString()).to.equal(peerIdStr);
   });
 });

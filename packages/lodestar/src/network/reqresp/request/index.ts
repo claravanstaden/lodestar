@@ -1,7 +1,6 @@
 import pipe from "it-pipe";
-import PeerId from "peer-id";
-import {Libp2p} from "libp2p/src/connection-manager";
-import {AbortSignal} from "@chainsafe/abort-controller";
+import {PeerId} from "@libp2p/interface-peer-id";
+import {Libp2p} from "libp2p";
 import {IForkDigestContext} from "@chainsafe/lodestar-config";
 import {ErrorAborted, ILogger, withTimeout, TimeoutError} from "@chainsafe/lodestar-utils";
 import {timeoutOptions} from "../../../constants/index.js";
@@ -12,7 +11,6 @@ import {formatProtocolId, renderRequestBody} from "../utils/index.js";
 import {ResponseError} from "../response/index.js";
 import {requestEncode} from "../encoders/requestEncode.js";
 import {responseDecode} from "../encoders/responseDecode.js";
-import {Libp2pConnection} from "../interface.js";
 import {collectResponses} from "./collectResponses.js";
 import {maxTotalResponseTimeout, responseTimeoutsHandler} from "./responseTimeoutsHandler.js";
 import {
@@ -57,7 +55,7 @@ export async function sendRequest<T extends IncomingResponseBody | IncomingRespo
 ): Promise<T> {
   const {REQUEST_TIMEOUT, DIAL_TIMEOUT} = {...timeoutOptions, ...options};
   const peer = prettyPrintPeerId(peerId);
-  const client = peersData.getPeerKind(peerId.toB58String());
+  const client = peersData.getPeerKind(peerId.toString());
   const logCtx = {method, encoding, client, peer, requestId};
 
   if (signal?.aborted) {
@@ -91,10 +89,7 @@ export async function sendRequest<T extends IncomingResponseBody | IncomingRespo
         const conn = await libp2p.dialProtocol(peerId, protocolIds, {signal: timeoutAndParentSignal});
         // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
         if (!conn) throw Error("dialProtocol timeout");
-        // TODO: libp2p-ts type Stream does not declare .abort() and requires casting to unknown here
-        // Remove when https://github.com/ChainSafe/lodestar/issues/2167
-        // After #2167 upstream types are still not good enough, and require casting
-        return (conn as unknown) as Libp2pConnection;
+        return conn;
       },
       DIAL_TIMEOUT,
       signal

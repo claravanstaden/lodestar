@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import sinon from "sinon";
 import {PeerAction, ScoreState, PeerRpcScoreStore, updateGossipsubScores} from "../../../../src/network/peers/score.js";
 
@@ -44,7 +44,7 @@ describe("simple block provider score tracking", function () {
   for (const [minScore, timeToDecay] of decayTimes)
     it(`Should decay MIN_SCORE to ${minScore} after ${timeToDecay} ms`, () => {
       const {scoreStore, peerScores} = mockStore();
-      const peerScore = peerScores.get(peer.toB58String());
+      const peerScore = peerScores.get(peer.toString());
       if (peerScore) {
         peerScore["lastUpdate"] = Date.now() - timeToDecay * factorForJsBadMath;
         peerScore["lodestarScore"] = MIN_SCORE;

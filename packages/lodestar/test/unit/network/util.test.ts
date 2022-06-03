@@ -1,6 +1,5 @@
 import {Multiaddr} from "multiaddr";
 import {expect} from "chai";
-import PeerId from "peer-id";
 import {config} from "@chainsafe/lodestar-config/default";
 import {ForkName} from "@chainsafe/lodestar-params";
 import {ENR} from "@chainsafe/discv5";
@@ -9,6 +8,7 @@ import {defaultNetworkOptions} from "../../../src/network/options.js";
 import {formatProtocolId, parseProtocolId} from "../../../src/network/reqresp/utils/index.js";
 import {createNodeJsLibp2p, isLocalMultiAddr} from "../../../src/network/index.js";
 import {getCurrentAndNextFork} from "../../../src/network/forks.js";
+import {PeerId} from "@libp2p/interface-peer-id";
 
 async function createPeerId(): Promise<PeerId> {
   return await PeerId.create({keyType: "secp256k1"});

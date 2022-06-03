@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {SLOTS_PER_EPOCH} from "@chainsafe/lodestar-params";
 import {config} from "@chainsafe/lodestar-config/default";
 import {generateEmptySignedBlock} from "../../../utils/block.js";

@@ -1,7 +1,5 @@
 import {itBench} from "@dapplion/benchmark";
-import PeerId from "peer-id";
-import {ATTESTATION_SUBNET_COUNT, SYNC_COMMITTEE_SUBNET_COUNT} from "@chainsafe/lodestar-params";
-import {altair, phase0} from "@chainsafe/lodestar-types";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {defaultNetworkOptions} from "../../../../../src/network/options.js";
 import {prioritizePeers, RequestedSubnet} from "../../../../../src/network/peers/utils/index.js";
 import {getAttnets, getSyncnets} from "../../../../utils/network.js";
@@ -12,7 +10,7 @@ describe("prioritizePeers", () => {
   before(function () {
     for (let i = 0; i < defaultNetworkOptions.maxPeers; i++) {
       const peer = new PeerId(Buffer.from(`peer-${i}`));
-      peer.toB58String = () => `peer-${i}`;
+      peer.toString = () => `peer-${i}`;
       seedPeers.push({
         id: peer,
         attnets: getAttnets([]),

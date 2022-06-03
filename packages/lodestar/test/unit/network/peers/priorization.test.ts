@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {phase0, altair} from "@chainsafe/lodestar-types";
 import {BitArray} from "@chainsafe/ssz";
 import {ATTESTATION_SUBNET_COUNT} from "@chainsafe/lodestar-params";
@@ -13,7 +13,7 @@ describe("network / peers / priorization", () => {
   const peers: PeerId[] = [];
   for (let i = 0; i < 8; i++) {
     const peer = new PeerId(Buffer.from(`peer-${i}`));
-    peer.toB58String = () => `peer-${i}`;
+    peer.toString = () => `peer-${i}`;
     peers.push(peer);
   }
   const none = BitArray.fromBitLen(ATTESTATION_SUBNET_COUNT);
@@ -212,7 +212,7 @@ describe("network / peers / priorization", () => {
         if (peers.length > 0) {
           result.push(reason);
         }
-        result.push(...peers.map((peer) => peer.toB58String()));
+        result.push(...peers.map((peer) => peer.toString()));
       }
       return result;
     };

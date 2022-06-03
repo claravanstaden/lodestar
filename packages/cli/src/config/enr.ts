@@ -1,4 +1,4 @@
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {Multiaddr} from "multiaddr";
 import {IBeaconNodeOptions} from "@chainsafe/lodestar";
 import {ENR, createKeypairFromPeerId} from "@chainsafe/discv5";

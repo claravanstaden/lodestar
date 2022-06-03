@@ -1,14 +1,14 @@
-import PeerId from "peer-id";
+import {PeerId} from "@libp2p/interface-peer-id";
 import {Multiaddr} from "multiaddr";
 import {ATTESTATION_SUBNET_COUNT, SYNC_COMMITTEE_SUBNET_COUNT} from "@chainsafe/lodestar-params";
 import {BitArray} from "@chainsafe/ssz";
 import {Network} from "../../src/network/index.js";
 import {NodejsNode} from "../../src/network/nodejs/index.js";
-import {createPeerId} from "../../src/network/index.js";
+import {createSecp256k1PeerId} from "../../src/network/index.js";
 import {Libp2pEvent} from "../../src/constants/index.js";
 
 export async function createNode(multiaddr: string, inPeerId?: PeerId): Promise<NodejsNode> {
-  const peerId = inPeerId || (await createPeerId());
+  const peerId = inPeerId || (await createSecp256k1PeerId());
   return new NodejsNode({
     peerId,
     addresses: {listen: [multiaddr]},

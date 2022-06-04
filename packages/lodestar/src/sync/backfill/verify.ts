@@ -52,7 +52,7 @@ export async function verifyBlockProposerSignature(
   if (blocks.length === 1 && blocks[0].message.slot === GENESIS_SLOT) return;
   const signatures = blocks.reduce((sigs: ISignatureSet[], block) => {
     // genesis block doesn't have valid signature
-    if (block.message.slot !== GENESIS_SLOT) sigs.push(getProposerSignatureSet(state, block));
+    if (block.message.slot !== GENESIS_SLOT) sigs.push(getProposerSignatureSet(allForks.BlockType.Full, state, block));
     return sigs;
   }, []);
 

@@ -12,7 +12,7 @@ import {BlockProposingService} from "./services/block.js";
 import {AttestationService} from "./services/attestation.js";
 import {IndicesService} from "./services/indices.js";
 import {SyncCommitteeService} from "./services/syncCommittee.js";
-import {pollPrepareBeaconProposer} from "./services/prepareBeaconProposer.js";
+import {pollPrepareBeaconProposer, pollBuilderValidatorRegistration} from "./services/prepareBeaconProposer.js";
 import {Interchange, InterchangeFormatVersion, ISlashingProtection} from "./slashingProtection/index.js";
 import {assertEqualParams, getLoggerVc, NotEqualParamsError} from "./util/index.js";
 import {ChainHeaderTracker} from "./services/chainHeaderTracker.js";
@@ -22,7 +22,10 @@ import {PubkeyHex} from "./types.js";
 import {Metrics} from "./metrics.js";
 import {MetaDataRepository} from "./repositories/metaDataRepository.js";
 
-export const defaultDefaultFeeRecipient = "0x0000000000000000000000000000000000000000";
+export const defaultOptions = {
+  defaultFeeRecipient: "0x0000000000000000000000000000000000000000",
+  defaultGasLimit: 30_000_000,
+};
 
 export type ValidatorOptions = {
   slashingProtection: ISlashingProtection;
@@ -35,6 +38,8 @@ export type ValidatorOptions = {
   defaultFeeRecipient?: string;
   strictFeeRecipientCheck?: boolean;
   closed?: boolean;
+  gasLimit?: number;
+  builder: {enabled?: boolean};
 };
 
 // TODO: Extend the timeout, and let it be customizable
@@ -64,7 +69,17 @@ export class Validator {
   private readonly controller: AbortController;
 
   constructor(opts: ValidatorOptions, readonly genesis: Genesis, metrics: Metrics | null = null) {
-    const {dbOps, logger, slashingProtection, signers, graffiti, defaultFeeRecipient, strictFeeRecipientCheck} = opts;
+    const {
+      dbOps,
+      logger,
+      slashingProtection,
+      signers,
+      graffiti,
+      defaultFeeRecipient,
+      strictFeeRecipientCheck,
+      gasLimit,
+      builder,
+    } = opts;
     const config = createIBeaconConfig(dbOps.config, genesis.genesisValidatorsRoot);
 
     this.controller = new AbortController();
@@ -91,10 +106,12 @@ export class Validator {
       indicesService,
       metrics,
       signers,
-      defaultFeeRecipient ?? defaultDefaultFeeRecipient
+      defaultFeeRecipient ?? defaultOptions.defaultFeeRecipient,
+      gasLimit ?? defaultOptions.defaultGasLimit
     );
-    if (defaultFeeRecipient !== undefined) {
-      pollPrepareBeaconProposer(loggerVc, api, clock, validatorStore);
+    pollPrepareBeaconProposer(config, loggerVc, api, clock, validatorStore, metrics);
+    if (builder.enabled) {
+      pollBuilderValidatorRegistration(config, loggerVc, api, clock, validatorStore, metrics);
     }
 
     const emitter = new ValidatorEventEmitter();
@@ -103,6 +120,7 @@ export class Validator {
     this.blockProposingService = new BlockProposingService(config, loggerVc, api, clock, validatorStore, metrics, {
       graffiti,
       strictFeeRecipientCheck,
+      builder,
     });
 
     this.attestationService = new AttestationService(

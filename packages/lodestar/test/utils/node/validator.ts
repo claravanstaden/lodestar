@@ -25,12 +25,16 @@ export async function getAndInitValidatorsWithKeystore({
   keystorePubKey,
   useRestApi,
   testLoggerOpts,
+  defaultFeeRecipient,
+  builder = {},
 }: {
   node: BeaconNode;
   keystoreContent: string;
   keystorePubKey: string;
   useRestApi?: boolean;
   testLoggerOpts?: TestLoggerOpts;
+  defaultFeeRecipient?: string;
+  builder: {enabled?: boolean};
 }): Promise<{
   validator: Validator;
   secretKeys: SecretKey[];
@@ -93,6 +97,8 @@ export async function getAndInitValidatorsWithKeystore({
     slashingProtection,
     logger,
     signers,
+    defaultFeeRecipient,
+    builder,
   });
 
   return {
@@ -117,6 +123,7 @@ export async function getAndInitDevValidators({
   testLoggerOpts,
   externalSignerUrl,
   defaultFeeRecipient,
+  builder = {},
 }: {
   node: BeaconNode;
   validatorsPerClient: number;
@@ -126,6 +133,7 @@ export async function getAndInitDevValidators({
   testLoggerOpts?: TestLoggerOpts;
   externalSignerUrl?: string;
   defaultFeeRecipient?: string;
+  builder: {enabled?: boolean};
 }): Promise<{validators: Validator[]; secretKeys: SecretKey[]}> {
   const validators: Promise<Validator>[] = [];
   const secretKeys: SecretKey[] = [];
@@ -167,6 +175,7 @@ export async function getAndInitDevValidators({
         logger,
         signers,
         defaultFeeRecipient,
+        builder,
       })
     );
   }

@@ -113,7 +113,7 @@ export async function validateGossipBlock(
   if (fork === ForkName.bellatrix) {
     if (!isBellatrixBlockBodyType(block.body)) throw Error("Not merge block type");
     const executionPayload = block.body.executionPayload;
-    if (isBellatrixStateType(blockState) && isExecutionEnabled(blockState, block.body)) {
+    if (isBellatrixStateType(blockState) && isExecutionEnabled(allForks.BlockType.Full, blockState, block.body)) {
       const expectedTimestamp = computeTimeAtSlot(config, blockSlot, chain.genesisTime);
       if (executionPayload.timestamp !== computeTimeAtSlot(config, blockSlot, chain.genesisTime)) {
         throw new BlockGossipError(GossipAction.REJECT, {
@@ -126,7 +126,7 @@ export async function validateGossipBlock(
   }
 
   // [REJECT] The proposer signature, signed_beacon_block.signature, is valid with respect to the proposer_index pubkey.
-  const signatureSet = getProposerSignatureSet(blockState, signedBlock);
+  const signatureSet = getProposerSignatureSet(allForks.BlockType.Full, blockState, signedBlock);
   // Don't batch so verification is not delayed
   if (!(await chain.bls.verifySignatureSets([signatureSet], {verifyOnMainThread: true}))) {
     throw new BlockGossipError(GossipAction.REJECT, {

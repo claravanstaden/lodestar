@@ -136,6 +136,7 @@ export async function devHandler(args: IDevArgs & IGlobalArgs): Promise<void> {
         type: SignerType.Local,
         secretKey,
       })),
+      builder: {},
     });
 
     onGracefulShutdownCbs.push(() => validator.close());

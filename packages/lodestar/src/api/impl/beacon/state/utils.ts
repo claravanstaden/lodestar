@@ -8,7 +8,7 @@ import {
   createEmptyEpochContextImmutableData,
   PubkeyIndexMap,
 } from "@chainsafe/lodestar-beacon-state-transition";
-import {BLSPubkey, phase0} from "@chainsafe/lodestar-types";
+import {BLSPubkey, phase0, allForks} from "@chainsafe/lodestar-types";
 import {stateTransition, processSlots} from "@chainsafe/lodestar-beacon-state-transition";
 import {IChainForkConfig} from "@chainsafe/lodestar-config";
 import {IForkChoice} from "@chainsafe/lodestar-fork-choice";
@@ -219,7 +219,7 @@ async function getFinalizedState(
 
   // process blocks up to the requested slot
   for await (const block of db.blockArchive.valuesStream({gt: state.slot, lte: slot})) {
-    state = stateTransition(state, block, {
+    state = stateTransition(allForks.BlockType.Full, state, block, {
       verifyStateRoot: false,
       verifyProposer: false,
       verifySignatures: false,

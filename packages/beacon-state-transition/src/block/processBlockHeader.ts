@@ -1,5 +1,5 @@
 import {toHexString, byteArrayEquals} from "@chainsafe/ssz";
-import {allForks, ssz} from "@chainsafe/lodestar-types";
+import {allForks, ssz, bellatrix} from "@chainsafe/lodestar-types";
 import {CachedBeaconStateAllForks} from "../types.js";
 import {ZERO_HASH} from "../constants/index.js";
 
@@ -9,7 +9,11 @@ import {ZERO_HASH} from "../constants/index.js";
  * PERF: Fixed work independent of block contents.
  * NOTE: `block` body root MUST be pre-cached.
  */
-export function processBlockHeader(state: CachedBeaconStateAllForks, block: allForks.BeaconBlock): void {
+export function processBlockHeader<T extends allForks.BlockType>(
+  type: T,
+  state: CachedBeaconStateAllForks,
+  block: allForks.FullOrBlindedBeaconBlock<T>
+): void {
   const slot = state.slot;
   // verify that the slots match
   if (block.slot !== slot) {
@@ -37,13 +41,18 @@ export function processBlockHeader(state: CachedBeaconStateAllForks, block: allF
     );
   }
 
+  const bodyRoot =
+    type === allForks.BlockType.Blinded
+      ? ssz.bellatrix.BlindedBeaconBlockBody.hashTreeRoot(block.body as bellatrix.BlindedBeaconBlockBody)
+      : types.BeaconBlockBody.hashTreeRoot(block.body as bellatrix.BeaconBlockBody);
+
   // cache current block as the new latest block
   state.latestBlockHeader = ssz.phase0.BeaconBlockHeader.toViewDU({
     slot: slot,
     proposerIndex: block.proposerIndex,
     parentRoot: block.parentRoot,
     stateRoot: ZERO_HASH,
-    bodyRoot: types.BeaconBlockBody.hashTreeRoot(block.body),
+    bodyRoot,
   });
 
   // verify proposer is not slashed. Only once per block, may use the slower read from tree

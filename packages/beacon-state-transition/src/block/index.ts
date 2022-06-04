@@ -17,24 +17,29 @@ export * from "./processOperations.js";
 export * from "./initiateValidatorExit.js";
 export * from "./isValidIndexedAttestation.js";
 
-export function processBlock(
+export function processBlock<T extends allForks.BlockType>(
+  type: T,
   fork: ForkSeq,
   state: CachedBeaconStateAllForks,
-  block: allForks.BeaconBlock,
+  block: allForks.FullOrBlindedBeaconBlock<T>,
   verifySignatures = true,
   executionEngine: ExecutionEngine | null
 ): void {
-  processBlockHeader(state, block);
+  processBlockHeader(type, state, block);
 
   // The call to the process_execution_payload must happen before the call to the process_randao as the former depends
   // on the randao_mix computed with the reveal of the previous block.
   if (fork >= ForkSeq.bellatrix) {
-    if (isExecutionEnabled(state as CachedBeaconStateBellatrix, (block as bellatrix.BeaconBlock).body)) {
-      processExecutionPayload(
-        state as CachedBeaconStateBellatrix,
-        (block as bellatrix.BeaconBlock).body.executionPayload,
-        executionEngine
-      );
+    const fullOrBlindedPayload = (type === allForks.BlockType.Blinded
+      ? (block as bellatrix.BlindedBeaconBlock).body.executionPayloadHeader
+      : (block as bellatrix.BeaconBlock).body.executionPayload) as allForks.FullOrBlindedExecutionPayload<T>;
+
+    const fullOrBlindedBody = (type === allForks.BlockType.Blinded
+      ? (block as bellatrix.BlindedBeaconBlock).body
+      : (block as bellatrix.BeaconBlock).body) as allForks.FullOrBlindedBellatrixBeaconBlockBody<T>;
+
+    if (isExecutionEnabled(type, state as CachedBeaconStateBellatrix, fullOrBlindedBody)) {
+      processExecutionPayload(type, state as CachedBeaconStateBellatrix, fullOrBlindedPayload, executionEngine);
     }
   }
 

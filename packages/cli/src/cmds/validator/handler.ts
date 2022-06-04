@@ -1,5 +1,5 @@
 import {LevelDbController} from "@chainsafe/lodestar-db";
-import {SlashingProtection, Validator} from "@chainsafe/lodestar-validator";
+import {SlashingProtection, Validator, defaultOptions} from "@chainsafe/lodestar-validator";
 import {SignerType, Signer} from "@chainsafe/lodestar-validator";
 import {getMetrics, MetricsRegister} from "@chainsafe/lodestar-validator";
 import {KeymanagerServer, KeymanagerApi} from "@chainsafe/lodestar-keymanager-server";
@@ -11,7 +11,7 @@ import {onGracefulShutdown, parseFeeRecipient} from "../../util/index.js";
 import {getVersionData} from "../../util/version.js";
 import {getBeaconPaths} from "../beacon/paths.js";
 import {getAccountPaths, getValidatorPaths} from "./paths.js";
-import {IValidatorCliArgs, validatorMetricsDefaultOptions, defaultDefaultFeeRecipient} from "./options.js";
+import {IValidatorCliArgs, validatorMetricsDefaultOptions} from "./options.js";
 import {getLocalSecretKeys, getExternalSigners, groupExternalSignersByUrl} from "./keys.js";
 
 /**
@@ -19,7 +19,7 @@ import {getLocalSecretKeys, getExternalSigners, groupExternalSignersByUrl} from 
  */
 export async function validatorHandler(args: IValidatorCliArgs & IGlobalArgs): Promise<void> {
   const graffiti = args.graffiti || getDefaultGraffiti();
-  const defaultFeeRecipient = parseFeeRecipient(args.defaultFeeRecipient ?? defaultDefaultFeeRecipient);
+  const defaultFeeRecipient = parseFeeRecipient(args.defaultFeeRecipient ?? defaultOptions.defaultFeeRecipient);
 
   const validatorPaths = getValidatorPaths(args);
   const beaconPaths = getBeaconPaths(args);
@@ -116,6 +116,8 @@ export async function validatorHandler(args: IValidatorCliArgs & IGlobalArgs): P
     await metricsServer.start();
   }
 
+  const builder = args["builder.enabled"] ? {enabled: true} : {};
+
   // This promise resolves once genesis is available.
   // It will wait for genesis, so this promise can be potentially very long
 
@@ -129,6 +131,7 @@ export async function validatorHandler(args: IValidatorCliArgs & IGlobalArgs): P
       graffiti,
       afterBlockDelaySlotFraction: args.afterBlockDelaySlotFraction,
       defaultFeeRecipient,
+      builder,
     },
     controller.signal,
     metrics

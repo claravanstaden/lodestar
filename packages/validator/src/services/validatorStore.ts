@@ -2,6 +2,8 @@ import {
   computeEpochAtSlot,
   computeSigningRoot,
   computeStartSlotAtEpoch,
+  computeDomain,
+  ZERO_HASH,
 } from "@chainsafe/lodestar-beacon-state-transition";
 import {IBeaconConfig} from "@chainsafe/lodestar-config";
 import {
@@ -14,11 +16,13 @@ import {
   DOMAIN_SYNC_COMMITTEE,
   DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF,
   DOMAIN_VOLUNTARY_EXIT,
+  DOMAIN_APPLICATION_BUILDER,
 } from "@chainsafe/lodestar-params";
 import type {SecretKey} from "@chainsafe/bls/types";
 import {
   allForks,
   altair,
+  bellatrix,
   BLSPubkey,
   BLSSignature,
   Epoch,
@@ -27,6 +31,7 @@ import {
   Slot,
   ValidatorIndex,
   ssz,
+  ExecutionAddress,
 } from "@chainsafe/lodestar-types";
 import {BitArray, fromHexString, toHexString} from "@chainsafe/ssz";
 import {routes} from "@chainsafe/lodestar-api";
@@ -82,7 +87,8 @@ export class ValidatorStore {
     private readonly indicesService: IndicesService,
     private readonly metrics: Metrics | null,
     initialSigners: Signer[],
-    private readonly defaultFeeRecipient: string
+    private readonly defaultFeeRecipient: string,
+    private readonly gasLimit: number
   ) {
     for (const signer of initialSigners) {
       this.addSigner(signer);
@@ -157,31 +163,33 @@ export class ValidatorStore {
     return this.validators.has(pubkeyHex);
   }
 
-  async signBlock(
+  async signBlock<T extends allForks.BlockType>(
+    type: T,
     pubkey: BLSPubkey,
-    block: allForks.BeaconBlock,
+    blindedOrFull: allForks.FullOrBlindedBeaconBlock<T>,
     currentSlot: Slot
-  ): Promise<allForks.SignedBeaconBlock> {
+  ): Promise<allForks.FullOrBlindedSignedBeaconBlock<T>> {
     // Make sure the block slot is not higher than the current slot to avoid potential attacks.
-    if (block.slot > currentSlot) {
-      throw Error(`Not signing block with slot ${block.slot} greater than current slot ${currentSlot}`);
+    if (blindedOrFull.slot > currentSlot) {
+      throw Error(`Not signing block with slot ${blindedOrFull.slot} greater than current slot ${currentSlot}`);
     }
 
-    const proposerDomain = this.config.getDomain(DOMAIN_BEACON_PROPOSER, block.slot);
-    const blockType = this.config.getForkTypes(block.slot).BeaconBlock;
-    const signingRoot = computeSigningRoot(blockType, block, proposerDomain);
+    const proposerDomain = this.config.getDomain(DOMAIN_BEACON_PROPOSER, blindedOrFull.slot);
+    const blockType =
+      type === allForks.BlockType.Blinded
+        ? ssz.bellatrix.BlindedBeaconBlock
+        : this.config.getForkTypes(blindedOrFull.slot).BeaconBlock;
+    const signingRoot = computeSigningRoot(blockType, blindedOrFull, proposerDomain);
 
     try {
-      await this.slashingProtection.checkAndInsertBlockProposal(pubkey, {slot: block.slot, signingRoot});
+      await this.slashingProtection.checkAndInsertBlockProposal(pubkey, {slot: blindedOrFull.slot, signingRoot});
     } catch (e) {
       this.metrics?.slashingProtectionBlockError.inc();
       throw e;
     }
+    const signature = await this.getSignature(pubkey, signingRoot);
 
-    return {
-      message: block,
-      signature: await this.getSignature(pubkey, signingRoot),
-    };
+    return {message: blindedOrFull, signature} as allForks.FullOrBlindedSignedBeaconBlock<T>;
   }
 
   async signRandao(pubkey: BLSPubkey, slot: Slot): Promise<BLSSignature> {
@@ -321,6 +329,27 @@ export class ValidatorStore {
 
     return {
       message: voluntaryExit,
+      signature: await this.getSignature(pubkey, signingRoot),
+    };
+  }
+
+  async signValidatorRegistration(
+    pubkey: BLSPubkey,
+    feeRecipient: ExecutionAddress,
+    _slot: Slot
+  ): Promise<bellatrix.SignedValidatorRegistrationV1> {
+    const gasLimit = this.gasLimit;
+    const timestamp = Math.floor(Date.now() / 1000);
+    const validatorRegistation: bellatrix.ValidatorRegistrationV1 = {
+      feeRecipient,
+      gasLimit,
+      timestamp,
+      pubkey,
+    };
+    const domain = computeDomain(DOMAIN_APPLICATION_BUILDER, this.config.GENESIS_FORK_VERSION, ZERO_HASH);
+    const signingRoot = computeSigningRoot(ssz.bellatrix.ValidatorRegistrationV1, validatorRegistation, domain);
+    return {
+      message: validatorRegistation,
       signature: await this.getSignature(pubkey, signingRoot),
     };
   }

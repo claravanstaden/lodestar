@@ -262,6 +262,10 @@ export async function importBlock(chain: ImportBlockModules, fullyVerifiedBlock:
   // Emit all events at once after fully completing importBlock()
   chain.emitter.emit(ChainEvent.block, block, postState);
   pendingEvents.emit();
+
+  // Register stat metrics about the block after importing it
+  chain.metrics?.proposerBalanceDiffAny.observe(fullyVerifiedBlock.proposerBalanceDiff);
+  chain.metrics?.registerImportedBlock(block.message, fullyVerifiedBlock);
 }
 
 async function maybeIssueNextProposerEngineFcU(

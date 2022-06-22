@@ -1,6 +1,6 @@
 import {Epoch, RootHex} from "@chainsafe/lodestar-types";
 
-import {IProtoBlock, IProtoNode, HEX_ZERO_HASH} from "./interface.js";
+import {IProtoBlock, IProtoNode, HEX_ZERO_HASH, ExecutionStatus} from "./interface.js";
 import {ProtoArrayError, ProtoArrayErrorCode} from "./errors.js";
 
 export const DEFAULT_PRUNE_THRESHOLD = 0;
@@ -129,7 +129,13 @@ export class ProtoArray {
         this.previousProposerBoost && this.previousProposerBoost.root === node.blockRoot
           ? this.previousProposerBoost.score
           : 0;
-      const nodeDelta = deltas[nodeIndex] + currentBoost - previousBoost;
+
+      // If this node's execution status has been marked invalid, then the weight of the node
+      // needs to be taken out of consideration
+      const nodeDelta =
+        node.executionStatus === ExecutionStatus.Invalid
+          ? -node.weight
+          : deltas[nodeIndex] + currentBoost - previousBoost;
 
       if (nodeDelta === undefined) {
         throw new ProtoArrayError({
@@ -190,6 +196,12 @@ export class ProtoArray {
     if (this.indices.has(block.blockRoot)) {
       return;
     }
+    if (block.executionStatus === ExecutionStatus.Invalid) {
+      throw new ProtoArrayError({
+        code: ProtoArrayErrorCode.INVALID_BLOCK_EXECUTION_STATUS,
+        root: block.blockRoot,
+      });
+    }
 
     const node: IProtoNode = {
       ...block,
@@ -207,9 +219,32 @@ export class ProtoArray {
     let parentIndex = node.parent;
     let n: IProtoNode | undefined = node;
     while (parentIndex !== undefined) {
+      const parent = this.getNodeByIndex(parentIndex);
+      switch (parent?.executionStatus) {
+        // If parent's execution is Invalid, we can't accept this block
+        // It should only happen on the leaf's parent, because we can't
+        // have a non invalid's parent as valid, if this happens it
+        // is a critical failure. So a chec
+        case ExecutionStatus.Invalid:
+          throw new ProtoArrayError({
+            code: ProtoArrayErrorCode.INVALID_PARENT_EXECUTION_STATUS,
+            root: block.blockRoot,
+            parent: block.parentRoot,
+          });
+
+        case ExecutionStatus.Syncing:
+          // If the node is valid and its parent is marked syncing, we need to
+          // propogate the execution status up
+          if (n?.executionStatus === ExecutionStatus.Valid) {
+            parent.executionStatus = ExecutionStatus.Valid;
+          }
+          break;
+
+        default:
+      }
       this.maybeUpdateBestChildAndDescendant(parentIndex, nodeIndex);
       nodeIndex = parentIndex;
-      n = this.getNodeByIndex(nodeIndex);
+      n = parent;
       parentIndex = n?.parent;
     }
   }
@@ -231,6 +266,13 @@ export class ProtoArray {
       throw new ProtoArrayError({
         code: ProtoArrayErrorCode.INVALID_JUSTIFIED_INDEX,
         index: justifiedIndex,
+      });
+    }
+
+    if (justifiedNode.executionStatus === ExecutionStatus.Invalid) {
+      throw new ProtoArrayError({
+        code: ProtoArrayErrorCode.INVALID_JUSTIFIED_EXECUTION_STATUS,
+        root: justifiedNode.blockRoot,
       });
     }
 
@@ -482,6 +524,7 @@ export class ProtoArray {
    * head.
    */
   nodeIsViableForHead(node: IProtoNode): boolean {
+    if (node.executionStatus === ExecutionStatus.Invalid) return false;
     const correctJustified =
       (node.justifiedEpoch === this.justifiedEpoch && node.justifiedRoot === this.justifiedRoot) ||
       this.justifiedEpoch === 0;

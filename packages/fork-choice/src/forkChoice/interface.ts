@@ -1,7 +1,7 @@
 import {EffectiveBalanceIncrements} from "@chainsafe/lodestar-beacon-state-transition";
 import {BeaconStateAllForks} from "@chainsafe/lodestar-beacon-state-transition";
 import {Epoch, Slot, ValidatorIndex, phase0, allForks, Root, RootHex} from "@chainsafe/lodestar-types";
-import {IProtoBlock, ExecutionStatus} from "../protoArray/interface.js";
+import {IProtoBlock, MaybeValidExecutionStatus} from "../protoArray/interface.js";
 import {CheckpointWithHex} from "./store.js";
 
 export type CheckpointHex = {
@@ -152,7 +152,7 @@ export type OnBlockPrecachedData = {
   justifiedBalances?: EffectiveBalanceIncrements;
   /** Time in seconds when the block was received */
   blockDelaySec: number;
-  executionStatus?: ExecutionStatus;
+  executionStatus?: MaybeValidExecutionStatus;
 };
 
 export interface ILatestMessage {

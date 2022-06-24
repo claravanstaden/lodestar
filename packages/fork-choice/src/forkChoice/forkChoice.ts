@@ -180,16 +180,19 @@ export class ForkChoice implements IForkChoice {
     let timer;
     this.metrics?.forkChoiceRequests.inc();
     try {
-      let deltas: number[];
-
       // Check if scores need to be calculated/updated
       if (!this.synced) {
         // eslint-disable-next-line prefer-const
         timer = this.metrics?.forkChoiceFindHead.startTimer();
         // eslint-disable-next-line prefer-const
-        deltas = computeDeltas(this.protoArray.indices, this.votes, this.justifiedBalances, this.justifiedBalances);
+        const deltas = computeDeltas(
+          this.protoArray.indices,
+          this.votes,
+          this.justifiedBalances,
+          this.justifiedBalances
+        );
         /**
-         * The structure in line with deltas to propogate boost up the branch
+         * The structure in line with deltas to propagate boost up the branch
          * starting from the proposerIndex
          */
         let proposerBoost: {root: RootHex; score: number} | null = null;
@@ -691,9 +694,26 @@ export class ForkChoice implements IForkChoice {
    * 1. verify is_merge_block if the mergeblock has not yet been validated
    * 2. Throw critical error and exit if a block in finalized chain gets invalidated
    */
-  validateLatestHash(_latestValidHash: RootHex, _invalidateTillHash: RootHex | null): void {
-    // Silently ignore for now if all calls were valid
-    return;
+  validateLatestHash(latestValidExecHash: RootHex, invalidateTillBlockHash: RootHex | null): void {
+    // We can skip calling this if the block was successfully validated and is
+    // to be imported, as on_block would already propagate valid hash
+
+    const latestValidHashIndex = this.protoArray.nodes
+      .slice()
+      .reverse()
+      .findIndex((node) => node.executionPayloadBlockHash === latestValidExecHash);
+    if (latestValidHashIndex >= 0) {
+      this.protoArray.propagateValidExecutionStatusByIndex(latestValidHashIndex);
+    }
+
+    if (invalidateTillBlockHash !== null) {
+      const invalidateTillBlockIndex = this.protoArray.indices.get(invalidateTillBlockHash);
+      if (invalidateTillBlockIndex === undefined) {
+        throw Error(`Unable to find invalidateTillBlockHash=${invalidateTillBlockHash} in forkChoice`);
+      }
+      this.protoArray.propagateInValidExecutionStatusByIndex(invalidateTillBlockIndex, latestValidHashIndex);
+      return;
+    }
   }
 
   private getPreMergeExecStatus(preCachedData?: OnBlockPrecachedData): ExecutionStatus.PreMerge {

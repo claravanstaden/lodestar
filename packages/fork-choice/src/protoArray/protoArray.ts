@@ -81,7 +81,7 @@ export class ProtoArray {
     finalizedRoot,
   }: {
     deltas: number[];
-    proposerBoost: ProposerBoost | null;
+    proposerBoost?: ProposerBoost | null;
     justifiedEpoch: Epoch;
     justifiedRoot: RootHex;
     finalizedEpoch: Epoch;
@@ -217,10 +217,30 @@ export class ProtoArray {
     this.nodes.push(node);
 
     let parentIndex = node.parent;
+    // If this node is valid, lets propagate the valid status up the chain
+    // and throw error if we counter invalid, as this breaks consensus
+    if (node.executionStatus === ExecutionStatus.Valid && parentIndex !== undefined) {
+      this.propagateValidExecutionStatusByIndex(parentIndex);
+    }
+
     let n: IProtoNode | undefined = node;
     while (parentIndex !== undefined) {
-      const parent = this.getNodeByIndex(parentIndex);
-      switch (parent?.executionStatus) {
+      this.maybeUpdateBestChildAndDescendant(parentIndex, nodeIndex);
+      nodeIndex = parentIndex;
+      n = this.getNodeByIndex(nodeIndex);
+      parentIndex = n?.parent;
+    }
+  }
+
+  propagateValidExecutionStatusByIndex(validNodeIndex: number): void {
+    let node: IProtoNode | undefined = this.getNodeFromIndex(validNodeIndex);
+    // propagate till we keep encountering syncing status
+    while (
+      node !== undefined &&
+      node.executionStatus !== ExecutionStatus.Valid &&
+      node.executionStatus !== ExecutionStatus.PreMerge
+    ) {
+      switch (node?.executionStatus) {
         // If parent's execution is Invalid, we can't accept this block
         // It should only happen on the leaf's parent, because we can't
         // have a non invalid's parent as valid, if this happens it
@@ -228,25 +248,80 @@ export class ProtoArray {
         case ExecutionStatus.Invalid:
           throw new ProtoArrayError({
             code: ProtoArrayErrorCode.INVALID_PARENT_EXECUTION_STATUS,
-            root: block.blockRoot,
-            parent: block.parentRoot,
+            root: node.blockRoot,
+            parent: node.parentRoot,
           });
 
         case ExecutionStatus.Syncing:
           // If the node is valid and its parent is marked syncing, we need to
-          // propogate the execution status up
-          if (n?.executionStatus === ExecutionStatus.Valid) {
-            parent.executionStatus = ExecutionStatus.Valid;
-          }
+          // propagate the execution status up
+          node.executionStatus = ExecutionStatus.Valid;
           break;
 
         default:
       }
-      this.maybeUpdateBestChildAndDescendant(parentIndex, nodeIndex);
-      nodeIndex = parentIndex;
-      n = parent;
-      parentIndex = n?.parent;
+
+      node = node.parent !== undefined ? this.getNodeByIndex(node.parent) : undefined;
     }
+  }
+
+  propagateInValidExecutionStatusByIndex(invalidateFromIndex: number, latestValidHashIndex: number): void {
+    // We need to do a two pass invalidation:
+    //   1. we go up and mark all nodes invalid and then
+    //   2. we need do iterate down and mark all children of invalid nodes invalid
+    //
+    // Pass 1, mark all parents invalid
+    /** invalidateAll is a flag which indicates detection of consensus failure */
+    let invalidateAll = false;
+    let invalidateIndex: number | undefined = invalidateFromIndex;
+    while (invalidateIndex !== undefined && invalidateFromIndex > latestValidHashIndex) {
+      const invalidNode = this.getNodeFromIndex(invalidateFromIndex);
+      if (
+        invalidNode.executionStatus !== ExecutionStatus.Syncing &&
+        invalidNode.executionStatus !== ExecutionStatus.Invalid
+      ) {
+        // This is another catastrophe, and indicates consensus failure
+        // the entire forkchoice should be invalidated
+        invalidateAll = true;
+      }
+      invalidNode.executionStatus = ExecutionStatus.Invalid;
+      invalidateIndex = invalidNode.parent;
+      if (invalidateIndex === latestValidHashIndex) {
+        break;
+      } else if (invalidateIndex === undefined || invalidateIndex < latestValidHashIndex) {
+        // If the latestValidHashIndex is not found as parent of invalidateFromIndex,
+        //
+        // 1. Consensus failure if the block trees of EL and CL are not corresponding
+        // 2. The forkChoice has moved past the block corresponding to latestValidHash
+        //    i.e. the finalized assumed by the CL is invalid and hence all of the
+        //    forkChoice is invalid
+        //
+        // So in either case, the entire forkchoice needs to be invalidated
+        invalidateAll = true;
+      }
+    }
+
+    // Pass 2: mark all children of invalid nodes as invalid
+    const nodeIndex = 1;
+    while (nodeIndex < this.nodes.length) {
+      const node = this.getNodeFromIndex(nodeIndex);
+      const parent = node.parent !== undefined ? this.getNodeByIndex(node.parent) : undefined;
+      if (invalidateAll || parent?.executionStatus === ExecutionStatus.Invalid) {
+        node.executionStatus = ExecutionStatus.Invalid;
+        node.bestChild = undefined;
+        node.bestDescendant = undefined;
+      }
+    }
+
+    // update the forkchoice
+    this.applyScoreChanges({
+      deltas: Array.from({length: this.indices.size}, () => 0),
+      proposerBoost: this.previousProposerBoost,
+      justifiedEpoch: this.justifiedEpoch,
+      justifiedRoot: this.justifiedRoot,
+      finalizedEpoch: this.finalizedEpoch,
+      finalizedRoot: this.finalizedRoot,
+    });
   }
 
   /**

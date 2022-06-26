@@ -1,6 +1,7 @@
-import {bellatrix, Slot, Root, BLSPubkey} from "@chainsafe/lodestar-types";
+import {bellatrix, Slot, Root, BLSPubkey, ssz} from "@chainsafe/lodestar-types";
 import {IChainForkConfig} from "@chainsafe/lodestar-config";
 import {getClient, Api as BuilderApi} from "@chainsafe/lodestar-api/builder";
+import {byteArrayEquals, toHexString} from "@chainsafe/ssz";
 
 import {IExecutionBuilder} from "./interface.js";
 
@@ -43,6 +44,15 @@ export class ExecutionBuilderHttp implements IExecutionBuilder {
     signedBlock: bellatrix.SignedBlindedBeaconBlock
   ): Promise<bellatrix.SignedBeaconBlock> {
     const {data: executionPayload} = await this.api.submitSignedBlindedBlock(signedBlock);
+    const expectedTransactionsRoot = signedBlock.message.body.executionPayloadHeader.transactionsRoot;
+    const actualTransactionsRoot = ssz.bellatrix.Transactions.hashTreeRoot(executionPayload.transactions);
+    if (!byteArrayEquals(expectedTransactionsRoot, actualTransactionsRoot)) {
+      throw Error(
+        `Invald transactionsRoot of the builder payload, expected=${toHexString(
+          expectedTransactionsRoot
+        )}, actual=${toHexString(actualTransactionsRoot)}`
+      );
+    }
     const fullySignedBlock: bellatrix.SignedBeaconBlock = {
       ...signedBlock,
       message: {...signedBlock.message, body: {...signedBlock.message.body, executionPayload}},

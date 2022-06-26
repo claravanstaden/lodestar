@@ -34,9 +34,19 @@ import {ZERO_HASH, ZERO_HASH_HEX} from "../../../constants/index.js";
 import {IEth1ForBlockProduction} from "../../../eth1/index.js";
 import {numToQuantity} from "../../../eth1/provider/utils.js";
 
-export async function assembleBody<T extends allForks.BlockType>(
-  type: T,
-  chain: IBeaconChain,
+export enum BlockType {
+  Full,
+  Blinded,
+}
+export type AssembledBodyType<T extends BlockType> = T extends BlockType.Full
+  ? allForks.BeaconBlockBody
+  : bellatrix.BlindedBeaconBlockBody;
+export type AssembledBlockType<T extends BlockType> = T extends BlockType.Full
+  ? allForks.BeaconBlock
+  : bellatrix.BlindedBeaconBlock;
+
+export async function assembleBody<T extends BlockType>(
+  {type, chain}: {type: T; chain: IBeaconChain},
   currentState: CachedBeaconStateAllForks,
   {
     randaoReveal,
@@ -55,7 +65,7 @@ export async function assembleBody<T extends allForks.BlockType>(
     proposerIndex: ValidatorIndex;
     proposerPubKey: BLSPubkey;
   }
-): Promise<allForks.FullOrBlindedBeaconBlockBody<T>> {
+): Promise<AssembledBodyType<T>> {
   // TODO:
   // Iterate through the naive aggregation pool and ensure all the attestations from there
   // are included in the operation pool.
@@ -97,7 +107,7 @@ export async function assembleBody<T extends allForks.BlockType>(
     const finalizedBlockHash = chain.forkChoice.getFinalizedBlock().executionPayloadBlockHash ?? ZERO_HASH_HEX;
     const feeRecipient = chain.beaconProposerCache.getOrDefault(proposerIndex);
 
-    if (type === allForks.BlockType.Blinded) {
+    if (type === BlockType.Blinded) {
       // For testing with merge mock, not required in production
       await prepareExecutionPayload(
         chain,
@@ -139,7 +149,7 @@ export async function assembleBody<T extends allForks.BlockType>(
       }
     }
   }
-  return blockBody as allForks.FullOrBlindedBeaconBlockBody<T>;
+  return blockBody as AssembledBodyType<T>;
 }
 
 /**

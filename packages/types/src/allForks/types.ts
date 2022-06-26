@@ -70,27 +70,8 @@ export type AllForksSSZTypes = {
   Metadata: AllForksTypeOf<typeof phase0Ssz.Metadata | typeof altairSsz.Metadata>;
 };
 
-export enum BlockType {
-  Full,
-  Blinded,
-}
-
-export type FullOrBlindedExecutionPayload<T extends BlockType> = T extends BlockType.Full
-  ? bellatrix.ExecutionPayload
-  : bellatrix.ExecutionPayloadHeader;
-
-export type FullOrBlindedBeaconBlockBody<T extends BlockType> = T extends BlockType.Full
-  ? BeaconBlockBody
-  : bellatrix.BlindedBeaconBlockBody;
-
-export type FullOrBlindedBellatrixBeaconBlockBody<T extends BlockType> = T extends BlockType.Full
-  ? bellatrix.BeaconBlockBody
-  : bellatrix.BlindedBeaconBlockBody;
-
-export type FullOrBlindedBeaconBlock<T extends BlockType> = T extends BlockType.Full
-  ? BeaconBlock
-  : bellatrix.BlindedBeaconBlock;
-
-export type FullOrBlindedSignedBeaconBlock<T extends BlockType> = T extends BlockType.Full
-  ? SignedBeaconBlock
-  : bellatrix.SignedBlindedBeaconBlock;
+export type FullOrBlindedExecutionPayload = bellatrix.ExecutionPayload | bellatrix.ExecutionPayloadHeader;
+export type FullOrBlindedBeaconBlockBody = BeaconBlockBody | bellatrix.BlindedBeaconBlockBody;
+export type FullOrBlindedBellatrixBeaconBlockBody = bellatrix.BeaconBlockBody | bellatrix.BlindedBeaconBlockBody;
+export type FullOrBlindedBeaconBlock = BeaconBlock | bellatrix.BlindedBeaconBlock;
+export type FullOrBlindedSignedBeaconBlock = SignedBeaconBlock | bellatrix.SignedBlindedBeaconBlock;

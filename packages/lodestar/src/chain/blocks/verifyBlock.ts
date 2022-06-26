@@ -9,7 +9,7 @@ import {
   getAllBlockSignatureSets,
   stateTransition,
 } from "@chainsafe/lodestar-beacon-state-transition";
-import {bellatrix, allForks} from "@chainsafe/lodestar-types";
+import {bellatrix} from "@chainsafe/lodestar-types";
 import {toHexString} from "@chainsafe/ssz";
 import {IForkChoice, ProtoBlock, ExecutionStatus, assertValidTerminalPowBlock} from "@chainsafe/lodestar-fork-choice";
 import {IChainForkConfig} from "@chainsafe/lodestar-config";
@@ -146,7 +146,6 @@ export async function verifyBlockStateTransition(
   // NOTE: `regen.getPreState()` should have dialed forward the state already caching checkpoint states
   const useBlsBatchVerify = !opts?.disableBlsBatchVerify;
   const postState = stateTransition(
-    allForks.BlockType.Full,
     preState,
     block,
     {
@@ -163,7 +162,7 @@ export async function verifyBlockStateTransition(
   const executionPayloadEnabled =
     isBellatrixStateType(postState) &&
     isBellatrixBlockBodyType(block.message.body) &&
-    isExecutionEnabled(allForks.BlockType.Full, postState, block.message.body)
+    isExecutionEnabled(postState, block.message.body)
       ? block.message.body.executionPayload
       : null;
 

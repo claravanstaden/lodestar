@@ -16,10 +16,6 @@ type BlockProposingServiceOpts = {
   builder: {enabled?: boolean};
 };
 
-type WrappedProduceBlockType =
-  | {type: allForks.BlockType.Full; data: allForks.FullOrBlindedBeaconBlock<allForks.BlockType.Full>}
-  | {type: allForks.BlockType.Blinded; data: allForks.FullOrBlindedBeaconBlock<allForks.BlockType.Blinded>};
-
 /**
  * Service that sets up and handles validator block proposal duties.
  */
@@ -93,11 +89,11 @@ export class BlockProposingService {
       this.logger.debug("Produced block", {...debugLogCtx, ...block.debugLogCtx});
       this.metrics?.blocksProduced.inc();
 
-      const signedBlock = await this.validatorStore.signBlock(block.type, pubkey, block.data, slot);
+      const signedBlock = await this.validatorStore.signBlock(pubkey, block.data, slot);
 
       this.metrics?.proposerStepCallPublishBlock.observe(this.clock.secFromSlot(slot));
 
-      await this.publishBlockWrapper(block.type, signedBlock).catch((e: Error) => {
+      await this.publishBlockWrapper(signedBlock).catch((e: Error) => {
         this.metrics?.blockProposingErrors.inc({error: "publish"});
         throw extendError(e, "Failed to publish block");
       });
@@ -108,18 +104,11 @@ export class BlockProposingService {
     }
   }
 
-  private publishBlockWrapper = async <T extends allForks.BlockType>(
-    type: T,
-    signedBlock: allForks.FullOrBlindedSignedBeaconBlock<T>
-  ): Promise<void> => {
-    switch (type) {
-      case allForks.BlockType.Blinded:
-        return this.api.beacon.publishBlindedBlock(signedBlock as bellatrix.SignedBlindedBeaconBlock);
-        break;
-      case allForks.BlockType.Full:
-      default:
-        return this.api.beacon.publishBlock(signedBlock);
-    }
+  private publishBlockWrapper = async (signedBlock: allForks.FullOrBlindedSignedBeaconBlock): Promise<void> => {
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    return (signedBlock.message.body as bellatrix.BlindedBeaconBlockBody).executionPayloadHeader
+      ? this.api.beacon.publishBlindedBlock(signedBlock as bellatrix.SignedBlindedBeaconBlock)
+      : this.api.beacon.publishBlock(signedBlock as allForks.SignedBeaconBlock);
   };
 
   private produceBlockWrapper = async (
@@ -127,7 +116,7 @@ export class BlockProposingService {
     randaoReveal: BLSSignature,
     graffiti: string,
     expectedFeeRecipient: string
-  ): Promise<WrappedProduceBlockType & {debugLogCtx: Record<string, string>}> => {
+  ): Promise<{data: allForks.FullOrBlindedBeaconBlock} & {debugLogCtx: Record<string, string>}> => {
     const blindedBlockPromise = this.opts.builder.enabled
       ? this.api.validator.produceBlindedBlock(slot, randaoReveal, graffiti).catch((e: Error) => {
           this.logger.error("Failed to produce builder block", {}, e as Error);
@@ -148,7 +137,7 @@ export class BlockProposingService {
     // A metric on the choice between blindedBlock and normal block can be applied
     if (blindedBlock) {
       const debugLogCtx = {source: "builder"};
-      return {...blindedBlock, type: allForks.BlockType.Blinded, debugLogCtx};
+      return {...blindedBlock, debugLogCtx};
     } else {
       const debugLogCtx = {source: "engine"};
       if (!fullBlock) {
@@ -174,7 +163,7 @@ export class BlockProposingService {
         }
         Object.assign(debugLogCtx, {feeRecipient});
       }
-      return {...fullBlock, type: allForks.BlockType.Full, debugLogCtx};
+      return {...fullBlock, debugLogCtx};
       // throw Error("random")
     }
   };

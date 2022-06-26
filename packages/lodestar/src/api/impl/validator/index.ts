@@ -14,11 +14,11 @@ import {
   SYNC_COMMITTEE_SUBNET_SIZE,
   ForkName,
 } from "@chainsafe/lodestar-params";
-import {Root, Slot, ValidatorIndex, ssz, BLSSignature, allForks} from "@chainsafe/lodestar-types";
+import {Root, Slot, ValidatorIndex, ssz, BLSSignature} from "@chainsafe/lodestar-types";
 import {ExecutionStatus} from "@chainsafe/lodestar-fork-choice";
 
 import {fromHexString} from "@chainsafe/ssz";
-import {assembleBlock} from "../../../chain/factory/block/index.js";
+import {assembleBlock, BlockType, AssembledBlockType} from "../../../chain/factory/block/index.js";
 import {AttestationError, AttestationErrorCode, GossipAction, SyncCommitteeError} from "../../../chain/errors/index.js";
 import {validateGossipAggregateAndProof} from "../../../chain/validation/index.js";
 import {ZERO_HASH} from "../../../constants/index.js";
@@ -171,7 +171,7 @@ export function getValidatorApi({chain, config, logger, metrics, network, sync}:
     randaoReveal,
     graffiti
   ) {
-    return produceBlockWrapper(allForks.BlockType.Blinded, slot, randaoReveal, graffiti);
+    return produceBlockWrapper(BlockType.Blinded, slot, randaoReveal, graffiti);
   };
 
   const produceBlock: routes.validator.Api["produceBlockV2"] = async function produceBlock(
@@ -179,15 +179,15 @@ export function getValidatorApi({chain, config, logger, metrics, network, sync}:
     randaoReveal,
     graffiti
   ) {
-    return produceBlockWrapper(allForks.BlockType.Full, slot, randaoReveal, graffiti);
+    return produceBlockWrapper(BlockType.Full, slot, randaoReveal, graffiti);
   };
 
-  async function produceBlockWrapper<T extends allForks.BlockType>(
+  async function produceBlockWrapper<T extends BlockType>(
     type: T,
     slot: Slot,
     randaoReveal: BLSSignature,
     graffiti: string
-  ): Promise<{data: allForks.FullOrBlindedBeaconBlock<T>; version: ForkName}> {
+  ): Promise<{data: AssembledBlockType<T>; version: ForkName}> {
     let timer;
     metrics?.blockProductionRequests.inc();
     try {
@@ -202,8 +202,7 @@ export function getValidatorApi({chain, config, logger, metrics, network, sync}:
 
       timer = metrics?.blockProductionTime.startTimer();
       const block = await assembleBlock(
-        type,
-        {chain, metrics},
+        {type, chain, metrics},
         {
           slot,
           randaoReveal,

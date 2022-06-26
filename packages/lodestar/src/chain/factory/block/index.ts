@@ -10,16 +10,16 @@ import {ZERO_HASH} from "../../../constants/index.js";
 import {IMetrics} from "../../../metrics/index.js";
 import {IBeaconChain} from "../../interface.js";
 import {RegenCaller} from "../../regen/index.js";
-import {assembleBody} from "./body.js";
+import {assembleBody, BlockType, AssembledBlockType} from "./body.js";
 
 type AssembleBlockModules = {
   chain: IBeaconChain;
   metrics: IMetrics | null;
 };
 
-export async function assembleBlock<T extends allForks.BlockType>(
-  type: T,
-  {chain, metrics}: AssembleBlockModules,
+export {BlockType, AssembledBlockType};
+export async function assembleBlock<T extends BlockType>(
+  {chain, metrics, type}: AssembleBlockModules & {type: T},
   {
     randaoReveal,
     graffiti,
@@ -29,7 +29,7 @@ export async function assembleBlock<T extends allForks.BlockType>(
     graffiti: Bytes32;
     slot: Slot;
   }
-): Promise<allForks.FullOrBlindedBeaconBlock<T>> {
+): Promise<AssembledBlockType<T>> {
   const head = chain.forkChoice.getHead();
   const state = await chain.regen.getBlockSlotState(head.blockRoot, slot, RegenCaller.produceBlock);
   const parentBlockRoot = fromHexString(head.blockRoot);
@@ -42,7 +42,7 @@ export async function assembleBlock<T extends allForks.BlockType>(
     proposerIndex,
     parentRoot: parentBlockRoot,
     stateRoot: ZERO_HASH,
-    body: await assembleBody<T>(type, chain, state, {
+    body: await assembleBody<T>({type, chain}, state, {
       randaoReveal,
       graffiti,
       blockSlot: slot,
@@ -51,9 +51,9 @@ export async function assembleBlock<T extends allForks.BlockType>(
       proposerIndex,
       proposerPubKey,
     }),
-  } as allForks.FullOrBlindedBeaconBlock<T>;
+  } as AssembledBlockType<T>;
 
-  block.stateRoot = computeNewStateRoot(type, {metrics}, state, block);
+  block.stateRoot = computeNewStateRoot({metrics}, state, block);
 
   return block;
 }
@@ -63,17 +63,15 @@ export async function assembleBlock<T extends allForks.BlockType>(
  * state is processed until block.slot already (this is to avoid double
  * epoch transition which happen at slot % 32 === 0)
  */
-function computeNewStateRoot<T extends allForks.BlockType>(
-  type: T,
+function computeNewStateRoot(
   {metrics}: {metrics: IMetrics | null},
   state: CachedBeaconStateAllForks,
-  block: allForks.FullOrBlindedBeaconBlock<T>
+  block: allForks.FullOrBlindedBeaconBlock
 ): Root {
   // Set signature to zero to re-use stateTransition() function which requires the SignedBeaconBlock type
-  const blockEmptySig = {message: block, signature: ZERO_HASH} as allForks.FullOrBlindedSignedBeaconBlock<T>;
+  const blockEmptySig = {message: block, signature: ZERO_HASH} as allForks.FullOrBlindedSignedBeaconBlock;
 
   const postState = stateTransition(
-    type,
     state,
     blockEmptySig,
     // verifyStateRoot: false  | the root in the block is zero-ed, it's being computed here

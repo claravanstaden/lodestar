@@ -1,29 +1,28 @@
 import {DOMAIN_BEACON_PROPOSER} from "@chainsafe/lodestar-params";
-import {allForks, ssz} from "@chainsafe/lodestar-types";
+import {allForks, ssz, bellatrix} from "@chainsafe/lodestar-types";
 import {computeSigningRoot} from "../util/index.js";
 import {ISignatureSet, SignatureSetType, verifySignatureSet} from "../util/signatureSets.js";
 import {CachedBeaconStateAllForks} from "../types.js";
 
-export function verifyProposerSignature<T extends allForks.BlockType>(
-  type: T,
+export function verifyProposerSignature(
   state: CachedBeaconStateAllForks,
-  signedBlock: allForks.FullOrBlindedSignedBeaconBlock<T>
+  signedBlock: allForks.FullOrBlindedSignedBeaconBlock
 ): boolean {
-  const signatureSet = getProposerSignatureSet(type, state, signedBlock);
+  const signatureSet = getProposerSignatureSet(state, signedBlock);
   return verifySignatureSet(signatureSet);
 }
 
-export function getProposerSignatureSet<T extends allForks.BlockType>(
-  type: T,
+export function getProposerSignatureSet(
   state: CachedBeaconStateAllForks,
-  signedBlock: allForks.FullOrBlindedSignedBeaconBlock<T>
+  signedBlock: allForks.FullOrBlindedSignedBeaconBlock
 ): ISignatureSet {
   const {config, epochCtx} = state;
   const domain = state.config.getDomain(DOMAIN_BEACON_PROPOSER, signedBlock.message.slot);
-  const blockType =
-    type === allForks.BlockType.Blinded
-      ? ssz.bellatrix.BlindedBeaconBlock
-      : config.getForkTypes(signedBlock.message.slot).BeaconBlock;
+
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  const blockType = (signedBlock.message as bellatrix.BlindedBeaconBlock).body.executionPayloadHeader
+    ? ssz.bellatrix.BlindedBeaconBlock
+    : config.getForkTypes(signedBlock.message.slot).BeaconBlock;
 
   return {
     type: SignatureSetType.single,

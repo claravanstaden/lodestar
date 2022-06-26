@@ -5,10 +5,9 @@ import {getRandaoMix} from "../util/index.js";
 import {ExecutionEngine} from "../util/executionEngine.js";
 import {isMergeTransitionComplete} from "../util/bellatrix.js";
 
-export function processExecutionPayload<T extends allForks.BlockType>(
-  type: T,
+export function processExecutionPayload(
   state: CachedBeaconStateBellatrix,
-  payload: allForks.FullOrBlindedExecutionPayload<T>,
+  payload: allForks.FullOrBlindedExecutionPayload,
   executionEngine: ExecutionEngine | null
 ): void {
   // Verify consistency of the parent hash, block number, base fee per gas and gas limit
@@ -48,7 +47,8 @@ export function processExecutionPayload<T extends allForks.BlockType>(
   // correct randao mix. Since executionEngine will be an async call in most cases it is called afterwards to keep
   // the state transition sync
   if (
-    type === allForks.BlockType.Full &&
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    (payload as bellatrix.ExecutionPayload).transactions &&
     executionEngine &&
     !executionEngine.notifyNewPayload(payload as bellatrix.ExecutionPayload)
   ) {
@@ -56,9 +56,8 @@ export function processExecutionPayload<T extends allForks.BlockType>(
   }
 
   const transactionsRoot =
-    type === allForks.BlockType.Blinded
-      ? (payload as bellatrix.ExecutionPayloadHeader).transactionsRoot
-      : ssz.bellatrix.Transactions.hashTreeRoot((payload as bellatrix.ExecutionPayload).transactions);
+    (payload as bellatrix.ExecutionPayloadHeader).transactionsRoot ??
+    ssz.bellatrix.Transactions.hashTreeRoot((payload as bellatrix.ExecutionPayload).transactions);
 
   // Cache execution payload header
   state.latestExecutionPayloadHeader = ssz.bellatrix.ExecutionPayloadHeader.toViewDU({

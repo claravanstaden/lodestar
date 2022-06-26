@@ -16,16 +16,15 @@ import {processEpoch} from "./epoch/index.js";
 /**
  * Implementation Note: follows the optimizations in protolambda's eth2fastspec (https://github.com/protolambda/eth2fastspec)
  */
-export function stateTransition<T extends allForks.BlockType>(
-  type: T,
+export function stateTransition(
   state: CachedBeaconStateAllForks,
-  signedBlock: allForks.FullOrBlindedSignedBeaconBlock<T>,
+  signedBlock: allForks.FullOrBlindedSignedBeaconBlock,
   options?: {verifyStateRoot?: boolean; verifyProposer?: boolean; verifySignatures?: boolean},
   metrics?: IBeaconStateTransitionMetrics | null
 ): CachedBeaconStateAllForks {
   const {verifyStateRoot = true, verifyProposer = true, verifySignatures = true} = options || {};
 
-  const block = signedBlock.message as allForks.FullOrBlindedBeaconBlock<T>;
+  const block = signedBlock.message as allForks.FullOrBlindedBeaconBlock;
   const blockSlot = block.slot;
 
   let postState = state.clone();
@@ -39,7 +38,7 @@ export function stateTransition<T extends allForks.BlockType>(
 
   // Verify proposer signature only
   if (verifyProposer) {
-    if (!verifyProposerSignature(type, postState, signedBlock)) {
+    if (!verifyProposerSignature(postState, signedBlock)) {
       throw new Error("Invalid block signature");
     }
   }
@@ -49,7 +48,7 @@ export function stateTransition<T extends allForks.BlockType>(
 
   const timer = metrics?.stfnProcessBlock.startTimer();
   try {
-    processBlock(type, fork, postState, block, verifySignatures, null);
+    processBlock(fork, postState, block, verifySignatures, null);
   } finally {
     timer?.();
   }

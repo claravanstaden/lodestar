@@ -9,11 +9,7 @@ import {ZERO_HASH} from "../constants/index.js";
  * PERF: Fixed work independent of block contents.
  * NOTE: `block` body root MUST be pre-cached.
  */
-export function processBlockHeader<T extends allForks.BlockType>(
-  type: T,
-  state: CachedBeaconStateAllForks,
-  block: allForks.FullOrBlindedBeaconBlock<T>
-): void {
+export function processBlockHeader(state: CachedBeaconStateAllForks, block: allForks.FullOrBlindedBeaconBlock): void {
   const slot = state.slot;
   // verify that the slots match
   if (block.slot !== slot) {
@@ -41,10 +37,10 @@ export function processBlockHeader<T extends allForks.BlockType>(
     );
   }
 
-  const bodyRoot =
-    type === allForks.BlockType.Blinded
-      ? ssz.bellatrix.BlindedBeaconBlockBody.hashTreeRoot(block.body as bellatrix.BlindedBeaconBlockBody)
-      : types.BeaconBlockBody.hashTreeRoot(block.body as bellatrix.BeaconBlockBody);
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  const bodyRoot = (block.body as bellatrix.BlindedBeaconBlockBody).executionPayloadHeader
+    ? ssz.bellatrix.BlindedBeaconBlockBody.hashTreeRoot(block.body as bellatrix.BlindedBeaconBlockBody)
+    : types.BeaconBlockBody.hashTreeRoot(block.body as bellatrix.BeaconBlockBody);
 
   // cache current block as the new latest block
   state.latestBlockHeader = ssz.phase0.BeaconBlockHeader.toViewDU({

@@ -17,29 +17,26 @@ export * from "./processOperations.js";
 export * from "./initiateValidatorExit.js";
 export * from "./isValidIndexedAttestation.js";
 
-export function processBlock<T extends allForks.BlockType>(
-  type: T,
+export function processBlock(
   fork: ForkSeq,
   state: CachedBeaconStateAllForks,
-  block: allForks.FullOrBlindedBeaconBlock<T>,
+  block: allForks.FullOrBlindedBeaconBlock,
   verifySignatures = true,
   executionEngine: ExecutionEngine | null
 ): void {
-  processBlockHeader(type, state, block);
+  processBlockHeader(state, block);
 
   // The call to the process_execution_payload must happen before the call to the process_randao as the former depends
   // on the randao_mix computed with the reveal of the previous block.
   if (fork >= ForkSeq.bellatrix) {
-    const fullOrBlindedPayload = (type === allForks.BlockType.Blinded
-      ? (block as bellatrix.BlindedBeaconBlock).body.executionPayloadHeader
-      : (block as bellatrix.BeaconBlock).body.executionPayload) as allForks.FullOrBlindedExecutionPayload<T>;
+    const fullOrBlindedPayload = ((block as bellatrix.BlindedBeaconBlock).body.executionPayloadHeader ??
+      (block as bellatrix.BeaconBlock).body.executionPayload) as allForks.FullOrBlindedExecutionPayload;
 
-    const fullOrBlindedBody = (type === allForks.BlockType.Blinded
-      ? (block as bellatrix.BlindedBeaconBlock).body
-      : (block as bellatrix.BeaconBlock).body) as allForks.FullOrBlindedBellatrixBeaconBlockBody<T>;
+    const fullOrBlindedBody = ((block as bellatrix.BlindedBeaconBlock).body ??
+      (block as bellatrix.BeaconBlock).body) as allForks.FullOrBlindedBellatrixBeaconBlockBody;
 
-    if (isExecutionEnabled(type, state as CachedBeaconStateBellatrix, fullOrBlindedBody)) {
-      processExecutionPayload(type, state as CachedBeaconStateBellatrix, fullOrBlindedPayload, executionEngine);
+    if (isExecutionEnabled(state as CachedBeaconStateBellatrix, fullOrBlindedBody)) {
+      processExecutionPayload(state as CachedBeaconStateBellatrix, fullOrBlindedPayload, executionEngine);
     }
   }
 

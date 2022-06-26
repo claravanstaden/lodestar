@@ -10,14 +10,14 @@ import {
  * Execution enabled = merge is done.
  * When (A) state has execution data OR (B) block has execution data
  */
-export function isExecutionEnabled<T extends allForks.BlockType>(
-  type: T,
+export function isExecutionEnabled(
   state: BeaconStateBellatrix,
-  body: allForks.FullOrBlindedBellatrixBeaconBlockBody<T>
+  body: allForks.FullOrBlindedBellatrixBeaconBlockBody
 ): boolean {
   return (
     isMergeTransitionComplete(state) ||
-    (type === allForks.BlockType.Blinded
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    ((body as bellatrix.BlindedBeaconBlockBody).executionPayloadHeader
       ? !ssz.bellatrix.ExecutionPayloadHeader.equals(
           (body as bellatrix.BlindedBeaconBlockBody).executionPayloadHeader,
           ssz.bellatrix.ExecutionPayloadHeader.defaultValue()

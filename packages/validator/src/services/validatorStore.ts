@@ -163,24 +163,23 @@ export class ValidatorStore {
     return this.validators.has(pubkeyHex);
   }
 
-  async signBlock<T extends allForks.BlockType>(
-    type: T,
+  async signBlock(
     pubkey: BLSPubkey,
-    blindedOrFull: allForks.FullOrBlindedBeaconBlock<T>,
+    blindedOrFull: allForks.FullOrBlindedBeaconBlock,
     currentSlot: Slot
-  ): Promise<allForks.FullOrBlindedSignedBeaconBlock<T>> {
+  ): Promise<allForks.FullOrBlindedSignedBeaconBlock> {
     // Make sure the block slot is not higher than the current slot to avoid potential attacks.
     if (blindedOrFull.slot > currentSlot) {
       throw Error(`Not signing block with slot ${blindedOrFull.slot} greater than current slot ${currentSlot}`);
     }
 
     const proposerDomain = this.config.getDomain(DOMAIN_BEACON_PROPOSER, blindedOrFull.slot);
-    const blockType =
-      type === allForks.BlockType.Blinded
-        ? ssz.bellatrix.BlindedBeaconBlock
-        : this.config.getForkTypes(blindedOrFull.slot).BeaconBlock;
-    const signingRoot = computeSigningRoot(blockType, blindedOrFull, proposerDomain);
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    const blockType = (blindedOrFull.body as bellatrix.BlindedBeaconBlockBody).executionPayloadHeader
+      ? ssz.bellatrix.BlindedBeaconBlock
+      : this.config.getForkTypes(blindedOrFull.slot).BeaconBlock;
 
+    const signingRoot = computeSigningRoot(blockType, blindedOrFull, proposerDomain);
     try {
       await this.slashingProtection.checkAndInsertBlockProposal(pubkey, {slot: blindedOrFull.slot, signingRoot});
     } catch (e) {
@@ -189,7 +188,7 @@ export class ValidatorStore {
     }
     const signature = await this.getSignature(pubkey, signingRoot);
 
-    return {message: blindedOrFull, signature} as allForks.FullOrBlindedSignedBeaconBlock<T>;
+    return {message: blindedOrFull, signature} as allForks.FullOrBlindedSignedBeaconBlock;
   }
 
   async signRandao(pubkey: BLSPubkey, slot: Slot): Promise<BLSSignature> {

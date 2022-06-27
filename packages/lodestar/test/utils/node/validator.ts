@@ -34,7 +34,7 @@ export async function getAndInitValidatorsWithKeystore({
   useRestApi?: boolean;
   testLoggerOpts?: TestLoggerOpts;
   defaultFeeRecipient?: string;
-  builder: {enabled?: boolean};
+  builder?: {enabled?: boolean};
 }): Promise<{
   validator: Validator;
   secretKeys: SecretKey[];

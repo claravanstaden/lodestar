@@ -133,7 +133,7 @@ export async function getAndInitDevValidators({
   testLoggerOpts?: TestLoggerOpts;
   externalSignerUrl?: string;
   defaultFeeRecipient?: string;
-  builder: {enabled?: boolean};
+  builder?: {enabled?: boolean};
 }): Promise<{validators: Validator[]; secretKeys: SecretKey[]}> {
   const validators: Promise<Validator>[] = [];
   const secretKeys: SecretKey[] = [];
